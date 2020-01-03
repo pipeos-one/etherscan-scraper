@@ -33,6 +33,17 @@ let self = module.exports = {
     })
     return results
   },
+  sourceCodeAddresses2: async () => {
+    let results = await new Promise((resolve, reject) => {
+      connection.query('SELECT * FROM addresses WHERE (verified = ? AND contractName IS NULL) OR (failed = ? AND contractName IS NULL) LIMIT 1', [1, 1], (err, res) => {
+        if (err) {
+          console.log(err)
+        }
+        resolve(res)
+      })
+    })
+    return results
+  },
   lastBlockIndexed: async () => {
     let results = await new Promise((resolve, reject) =>
       connection.query('SELECT * FROM blocks ORDER BY block DESC LIMIT 1', (err, res) => {
@@ -73,12 +84,24 @@ let self = module.exports = {
     )
     return results
   },
-  updateAddresses: async (address, blockscout, verified, checked, failed, contractName = null, compilerVersion = null, optimization = null, runs = null, evmVersion = null, sourceCode = null, bytecode = null, constructorArguments = null, libraries = null) => {
+  checkVerifiedAddresses: async () => {
+    let results = await new Promise((resolve, reject) =>
+      connection.query('SELECT * FROM addresses WHERE verified = ? AND checked = ? AND blockscout = ? AND id > ? ORDER BY id DESC LIMIT 1000', [1, 0, 0, 0], (err, res) => {
+        if (err) {
+          reject(err)
+        } else {
+          resolve(res)
+        }
+      })
+    )
+    return results
+  },
+  updateAddresses: async (address, blockscout, verified, checked, failed, contractName = null, compilerVersion = null, optimization = null, runs = null, evmVersion = null, sourceCode = null, bytecode = null, constructorArguments = null, libraries = null, abi = null) => {
     if (libraries) {
       libraries = 1
     }
     let results = await new Promise((resolve, reject) =>
-      connection.query('UPDATE addresses SET blockscout = ?, verified = ?, checked = ?, failed = ?, contractName = ?, compilerVersion = ?, optimization = ?, runs = ?, evmVersion = ?, sourceCode = ?, bytecode = ?, constructorArguments = ?, libraries = ? WHERE address = ?', [blockscout, verified, checked, failed, contractName, compilerVersion, optimization, runs, evmVersion, sourceCode, bytecode, constructorArguments, libraries, address], (err) => {
+      connection.query('UPDATE addresses SET blockscout = ?, verified = ?, checked = ?, failed = ?, contractName = ?, compilerVersion = ?, optimization = ?, runs = ?, evmVersion = ?, sourceCode = ?, bytecode = ?, constructorArguments = ?, libraries = ?, abi = ? WHERE address = ?', [blockscout, verified, checked, failed, contractName, compilerVersion, optimization, runs, evmVersion, sourceCode, bytecode, constructorArguments, libraries, abi, address], (err) => {
         if (err) {
           reject(err)
         } else {
@@ -131,5 +154,28 @@ let self = module.exports = {
       })
     })
     return results
-  }
+  },
+  updateAddressesAbi: async (address, abi = '[]', abi_verified = 0) => {
+    let results = await new Promise((resolve, reject) =>
+      connection.query('UPDATE addresses SET abi = ?, abi_verified = ? WHERE address = ?', [abi, abi_verified, address], (err) => {
+        if (err) {
+          reject(err)
+        } else {
+          resolve(true)
+        }
+      })
+    )
+    return results
+  },
+  checkAbiAddresses: async () => {
+    let results = await new Promise((resolve, reject) => {
+      connection.query('SELECT * FROM addresses WHERE verified = ? AND abi IS NULL LIMIT 1', [1], (err, res) => {
+        if (err) {
+          console.log(err)
+        }
+        resolve(res)
+      })
+    })
+    return results
+  },
 }

@@ -20,6 +20,23 @@ module.exports = {
       }
     })
     return results
+  },
+  parsePageNoProxy: async (url) => {
+    let results = await new Promise(async (resolve, reject) => {
+      try {
+        let data = await axios.fetchPageNoProxy(url)
+        if (contractVerified(data)) {
+          // we know the contract is verified, let's get the source code, name, solidity version, optimization, constructors and libraries
+          let object = parseVerifiedContract(data)
+          resolve(object)
+        } else {
+          resolve(false)
+        }
+      } catch (error) {
+        reject(error)
+      }
+    })
+    return results
   }
 }
 
@@ -47,6 +64,8 @@ function parseVerifiedContract (data) {
   contractObject.evmVersion = $('#ContentPlaceHolder1_contractCodeDiv > div.row.mx-gutters-lg-1.mb-5 > div:nth-child(2) > div:nth-child(3) > div.col-7.col-lg-8 > span').text()
   let sourceCode = $('pre.js-sourcecopyarea').text()
   contractObject.sourceCode = parseSourceCode(sourceCode)
+  contractObject.abi = $('#js-copytextarea2').text()
+  // $('pre.js-copytextarea2').text()
   contractObject.bytecode = $('#verifiedbytecode2').text()
   if (data.indexOf('Constructor Arguments') > -1) {
     contractObject.constructorArguments = parseConstructorArguments($('#dividcode > div:nth-child(4) > pre').text())
