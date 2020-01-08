@@ -5,12 +5,22 @@ const mysql = require('./resources/mysql')
 const colors = require('colors')
 const cheerio = require('cheerio')
 
-const etherscanBase = 'https://etherscan.io'
-const etherscanApiBase = 'https://api.etherscan.io/api';
+const etherscanBase = 'https://goerli.etherscan.io'
+const etherscanApiBase = 'https://api-goerli.etherscan.io/api'
+const startBlock = 200000
+
+// const etherscanBase = 'https://ropsten.etherscan.io'
+// const etherscanApiBase = 'https://api-ropsten.etherscan.io/api';
+// const startBlock = 6000000
+
+//const etherscanBase = 'https://etherscan.io'
+//const etherscanApiBase = 'https://api.etherscan.io/api';
+//const startBlock = 7650153
+
+
 const blockURL = `${etherscanBase}/txs?block=`
 const verifiedContractPage = `${etherscanBase}/contractsVerified/`
 const start = 1
-const startBlock = 7650153
 
 // const sleepTimeOne = 1000
 // const sleepTimeThousand = 30000
@@ -37,25 +47,14 @@ const totalTransactionsOnPage = 25
 startApp()
 
 async function startApp () {
-  // before looking for new addresses we check for existing verified contracts
-  await importSourceCode()
+  // // before looking for new addresses we check for existing verified contracts
+  // await importSourceCode()
 
-  // loop through verified contracts page
-
-  for (let y = start; y <= verfiedContractPageEnd; y++) {
-    scrapeVerifiedContracts(y)
-    await sleep(sleepTimeVerifiedPage)
-  }
-
-  // check verified contract page every minute
-  checkVerifiedContractsPage(1)
-
-  // check pending addresses for verified accounts
-  importSourceCode(true)
 
   // get current block number
   let currentBlock = await latestBlock()
-  console.log('Current Block Number on Mainnet: ', currentBlock)
+  console.log('Current Block Number on chain: ', currentBlock)
+  await mysql.insertIndexedBlock(currentBlock).catch(e => console.log(e.message))
 
   // get last block indexed on Ethereum
   let finalBlock = await mysql.lastBlockIndexed()
@@ -64,6 +63,7 @@ async function startApp () {
   // check startBlock
   await mysql.checkStartBlock(startBlock)
   console.log('Checking to see if the start block is indexed...')
+  console.log(startBlock, finalBlock)
 
   if (finalBlock === 0) {
     console.log('No blocks found indexed in DB')
@@ -73,7 +73,7 @@ async function startApp () {
     console.log(blockGaps)
     console.log('Checking block gaps...')
     if (blockGaps.length > 0) {
-      for (let u = 0; u < blockGaps.length; u++) {
+      for (let u = 1; u < blockGaps.length; u++) {
         for (let p = blockGaps[u].gap_starts_at; p <= blockGaps[u].gap_ends_at; p++) {
           scrapeBlockPage(p)
           mysql.insertIndexedBlock(p)
@@ -82,13 +82,24 @@ async function startApp () {
       }
     }
   }
+  return  //REMOVE
+  // loop through verified contracts page
+  for (let y = start; y <= verfiedContractPageEnd; y++) {
+    scrapeVerifiedContracts(y)
+    await sleep(sleepTimeVerifiedPage)
+  }
 
   // import the source code into mysql
   checkSourceCodeImport()
 
   // check Transaction page every minute
-  // checkNewBlocks()
+  checkNewBlocks()
 
+  // check verified contract page every minute
+  checkVerifiedContractsPage(1)
+
+  // check pending addresses for verified accounts
+  importSourceCode(true)
 }
 
 async function checkNewBlocks () {
@@ -130,9 +141,10 @@ async function scrapeBlockPage (block) {
   // let data = await axios.fetchPage(blockPageURL, host)
   let data = await axios.fetchPageNoProxy(blockPageURL)
   let totalTransactions = getBlockPages(data)
-  console.log(totalTransactions)
+  console.log('totalTransactions', totalTransactions)
   let totalpages = Math.ceil(totalTransactions / totalTransactionsOnPage)
-  parseTransactionsTable(data)
+  parseTransactionsTable(data, block)
+
   if (totalpages > 1) {
     for (let i = 2; i < totalpages; i++) {
       await sleep(sleepTimeBlockPage)
@@ -140,7 +152,7 @@ async function scrapeBlockPage (block) {
       let blockPagePaginated = blockURL + block + '&p=' + i
       // let paginatedData = await axios.fetchPage(blockPagePaginated, host)
       let paginatedData = await axios.fetchPageNoProxy(blockPagePaginated)
-      parseTransactionsTable(paginatedData)
+      parseTransactionsTable(paginatedData, block)
     }
   }
 }
@@ -161,16 +173,25 @@ function parseVerifiedContractPage (data) {
   storeAddresses(addressArray, true)
 }
 
-function parseTransactionsTable (data) {
+function parseTransactionsTable (data, block) {
   let addressArray = []
   let $ = cheerio.load(data)
+  let lastTxhash;
   $('tbody > tr > td').each(function (i, element) {
     let res = $(this)
-    let parsedData = res.children().html()
+    // let parsedData = res.children().html()
+    let parsedData = res.html()
     if (parsedData !== null) {
-      if (parsedData.includes('fa-file-alt')) {
+      if (parsedData.includes('/tx/')) {
+        lastTxhash = callbackGetTxhash(parsedData)
+      }
+      // transaction to contract or contract creation
+      // if (parsedData.includes('fa-file-alt')) {
+
+      if (parsedData.includes('Contract Creation')) {
         let address = callback(parsedData)
-        addressArray.push(address)
+        // addressArray.push(address)
+        addressArray.push({address, txhash: lastTxhash, block});
       }
     }
   })
@@ -184,8 +205,16 @@ function storeAddresses (addresses, isVerifiedPage = false) {
   })
 }
 
+function callbackGetTxhash (data) {
+  var re = new RegExp('href="/tx/(.*?)">', 'i')
+  let txhash = data.match(re)
+  if (txhash) {
+    return txhash[1]
+  }
+}
+
 function callback (data) {
-  var re = new RegExp('href="/address/(.*?)">', 'i')
+  var re = new RegExp('href="/address/(.*?)"', 'i')
   let address = data.match(re)
   if (address) {
     return address[1]
@@ -195,8 +224,12 @@ function callback (data) {
 function removeDuplicates (array) {
   // Use hashtable to remove duplicate addresses
   var seen = {}
+  // return array.filter(function (item) {
+  //   return seen.hasOwnProperty(item) ? false : (seen[item] = true)
+  // })
+
   return array.filter(function (item) {
-    return seen.hasOwnProperty(item) ? false : (seen[item] = true)
+    return seen.hasOwnProperty(item.address) ? false : (seen[item.address] = true)
   })
 }
 
@@ -209,15 +242,17 @@ async function latestBlock () {
   // let host = proxy.generateProxy()
   let esLastBlockURL = `${etherscanApiBase}?module=proxy&action=eth_blockNumber&apikey=YourApiKeyToken`
   // let block = JSON.parse(await axios.fetchPage(esLastBlockURL, host))
-  let block = JSON.parse(await axios.fetchPageNoProxy(esLastBlockURL))
+  let block = JSON.parse(await axios.fetchPageNoProxy(esLastBlockURL));
   return parseInt(block.result, 16)
 }
 
 function getBlockPages (data) {
-  var re = new RegExp('total of(.*?)transactions', 'i')
-  let total = data.match(re)[1]
-  if (total) {
-    return parseInt(total.trim())
+  var re = new RegExp('total of(.*?)transaction', 'i')
+  let total = data.match(re)
+  if (total && total[1]) {
+    return parseInt(total[1].trim())
+  } else {
+    console.log('getBlockPages no txns found')
   }
 }
 
@@ -238,12 +273,13 @@ async function importSourceCode (repeat = false) {
           console.log(colors.yellow(importAddress))
         }
 
-        mysql.updateAddresses(importAddress, 1, 1, 1, 0, verifiedContract.contractName, verifiedContract.compilerVersion, verifiedContract.optimization, verifiedContract.runs, verifiedContract.evmVersion, verifiedContract.sourceCode, verifiedContract.bytecode, verifiedContract.constructorArguments, verifiedContract.libraries, verifiedContract.abi)
+        mysql.updateAddresses(importAddress, 1, 1, 1, 0, null, null, verifiedContract.contractName, verifiedContract.compilerVersion, verifiedContract.optimization, verifiedContract.runs, verifiedContract.evmVersion, verifiedContract.sourceCode, verifiedContract.bytecode, verifiedContract.constructorArguments, verifiedContract.libraries, verifiedContract.abi)
       } else {
       // mark contract as not verified on Etherscan
         console.log(importAddress + ' not verified on Etherscan...')
         mysql.updateAddresses(importAddress, 0, 0, 1, 0)
       }
+
       await sleep(sleepTimeOne)
     }
   }
@@ -268,7 +304,7 @@ async function checkSourceCodeImport () {
     let verifiedContract = await parser.parsePageNoProxy(etherscanCodeURL)
     if (verifiedContract) {
       console.log(colors.cyan(address + ' source code fetched and imported...'))
-      await mysql.updateAddresses(address, blockscout, verified, checked, failed, verifiedContract.contractName, verifiedContract.compilerVersion, verifiedContract.optimization, verifiedContract.runs, verifiedContract.evmVersion, verifiedContract.sourceCode, verifiedContract.bytecode, verifiedContract.constructorArguments, verifiedContract.libraries, verifiedContract.abi)
+      await mysql.updateAddresses(address, blockscout, verified, checked, failed, null, null, verifiedContract.contractName, verifiedContract.compilerVersion, verifiedContract.optimization, verifiedContract.runs, verifiedContract.evmVersion, verifiedContract.sourceCode, verifiedContract.bytecode, verifiedContract.constructorArguments, verifiedContract.libraries, verifiedContract.abi)
     }
     await sleep(sleepTimeOne)
   }

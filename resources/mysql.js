@@ -1,7 +1,7 @@
 var connection = require('./database')
 
 let self = module.exports = {
-  insertAddress: async (address, isVerified) => {
+  insertAddress: async ({address, txhash, block}, isVerified) => {
     let results = await new Promise((resolve, reject) =>
       connection.query('SELECT * from addresses WHERE address = ?', [address], (err, res) => {
         if (err) {
@@ -10,11 +10,11 @@ let self = module.exports = {
           if (res.length === 0) {
             if (address) {
               console.log('Inserting ' + address + ' into the DB...')
-              connection.query('INSERT INTO addresses (address) VALUES (?)', [address])
+              connection.query('INSERT INTO addresses (address, verified, txhash, block) VALUES (?, ?, ?, ?)', [address, isVerified, txhash, block])
             }
           } else {
             if (isVerified === true && res[0].blockscout === 0 && res[0].failed === 0) {
-              self.updateAddresses(res[0].address, 0, 0, 0, 0)
+              self.updateAddresses(res[0].address, 0, 1, 0, 0, txhash, block)
             }
           }
         }
@@ -96,12 +96,23 @@ let self = module.exports = {
     )
     return results
   },
-  updateAddresses: async (address, blockscout, verified, checked, failed, contractName = null, compilerVersion = null, optimization = null, runs = null, evmVersion = null, sourceCode = null, bytecode = null, constructorArguments = null, libraries = null, abi = null) => {
+  updateAddresses: async (address, blockscout, verified, checked, failed, txhash = null, block = null, contractName = null, compilerVersion = null, optimization = null, runs = null, evmVersion = null, sourceCode = null, bytecode = null, constructorArguments = null, libraries = null, abi = null) => {
     if (libraries) {
       libraries = 1
     }
+    let upd = 'UPDATE addresses SET blockscout = ?, verified = ?, checked = ?, failed = ?, contractName = ?, compilerVersion = ?, optimization = ?, runs = ?, evmVersion = ?, sourceCode = ?, bytecode = ?, constructorArguments = ?, libraries = ?, abi = ?'
+    let args = [blockscout, verified, checked, failed, contractName, compilerVersion, optimization, runs, evmVersion, sourceCode, bytecode, constructorArguments, libraries, abi]
+    if (txhash) {
+      upd += ', txhash = ?'
+      args.push(txhash)
+    }
+    if (block) {
+      upd += ', block = ?'
+      args.push(block)
+    }
+    args.push(address)
     let results = await new Promise((resolve, reject) =>
-      connection.query('UPDATE addresses SET blockscout = ?, verified = ?, checked = ?, failed = ?, contractName = ?, compilerVersion = ?, optimization = ?, runs = ?, evmVersion = ?, sourceCode = ?, bytecode = ?, constructorArguments = ?, libraries = ?, abi = ? WHERE address = ?', [blockscout, verified, checked, failed, contractName, compilerVersion, optimization, runs, evmVersion, sourceCode, bytecode, constructorArguments, libraries, abi, address], (err) => {
+      connection.query(upd + ' WHERE address = ?', args, (err) => {
         if (err) {
           reject(err)
         } else {
@@ -117,7 +128,7 @@ let self = module.exports = {
         if (err) {
           console.log(err)
         }
-        if (results[0].block === start) {
+        if (results.length > 0 && results[0].block === start) {
           resolve(true)
         } else {
           connection.query('INSERT INTO blocks (block) VALUES (?)', [start], (error) => {
