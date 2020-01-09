@@ -35,7 +35,7 @@ let self = module.exports = {
   },
   sourceCodeAddresses2: async () => {
     let results = await new Promise((resolve, reject) => {
-      connection.query('SELECT * FROM addresses WHERE (verified = ? AND contractName IS NULL) OR (failed = ? AND contractName IS NULL) LIMIT 1', [1, 1], (err, res) => {
+      connection.query('SELECT * FROM addresses WHERE (checked = ? AND contractName IS NULL) OR (failed = ? AND contractName IS NULL) LIMIT 1', [0, 1], (err, res) => {
         if (err) {
           console.log(err)
         }
@@ -86,7 +86,7 @@ let self = module.exports = {
   },
   checkVerifiedAddresses: async () => {
     let results = await new Promise((resolve, reject) =>
-      connection.query('SELECT * FROM addresses WHERE verified = ? AND checked = ? AND blockscout = ? AND id > ? ORDER BY id DESC LIMIT 1000', [1, 0, 0, 0], (err, res) => {
+      connection.query('SELECT * FROM addresses WHERE verified = ? AND checked = ? AND blockscout = ? AND id > ? ORDER BY id DESC LIMIT 1000', [0, 0, 0, 0], (err, res) => {
         if (err) {
           reject(err)
         } else {
@@ -96,12 +96,12 @@ let self = module.exports = {
     )
     return results
   },
-  updateAddresses: async (address, blockscout, verified, checked, failed, txhash = null, block = null, contractName = null, compilerVersion = null, optimization = null, runs = null, evmVersion = null, sourceCode = null, bytecode = null, constructorArguments = null, libraries = null, abi = null) => {
-    if (libraries) {
-      libraries = 1
-    }
-    let upd = 'UPDATE addresses SET blockscout = ?, verified = ?, checked = ?, failed = ?, contractName = ?, compilerVersion = ?, optimization = ?, runs = ?, evmVersion = ?, sourceCode = ?, bytecode = ?, constructorArguments = ?, libraries = ?, abi = ?'
-    let args = [blockscout, verified, checked, failed, contractName, compilerVersion, optimization, runs, evmVersion, sourceCode, bytecode, constructorArguments, libraries, abi]
+  updateAddresses: async (address, blockscout, verified, checked, failed, txhash = null, block = null, contractName = null, compilerVersion = null, optimization = null, runs = null, evmVersion = null, sourceCode = null, bytecode = null, constructorArguments = null, libraries = null, abi = null, sourceCodeJson = null, sourcemap = null, swarm = null, license = null) => {
+    // if (libraries) {
+    //   libraries = 1
+    // }
+    let upd = 'UPDATE addresses SET blockscout = ?, verified = ?, checked = ?, failed = ?, contractName = ?, compilerVersion = ?, optimization = ?, runs = ?, evmVersion = ?, sourceCode = ?, bytecode = ?, constructorArguments = ?, libraries = ?, abi = ?, sourceCodeJson = ?, sourcemap = ?, swarm = ?, license = ?'
+    let args = [blockscout, verified, checked, failed, contractName, compilerVersion, optimization, runs, evmVersion, sourceCode, bytecode, constructorArguments, libraries, abi, sourceCodeJson, sourcemap, swarm, license]
     if (txhash) {
       upd += ', txhash = ?'
       args.push(txhash)

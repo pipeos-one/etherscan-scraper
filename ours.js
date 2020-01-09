@@ -268,12 +268,13 @@ async function importSourceCode (repeat = false) {
       // let verifiedContract = await parser.parsePage(etherscanCodeURL)
       let verifiedContract = await parser.parsePageNoProxy(etherscanCodeURL)
       // console.log(verifiedContract)
+
       if (verifiedContract) {
         if (verifiedContract.constructorArguments) {
           console.log(colors.yellow(importAddress))
         }
 
-        mysql.updateAddresses(importAddress, 1, 1, 1, 0, null, null, verifiedContract.contractName, verifiedContract.compilerVersion, verifiedContract.optimization, verifiedContract.runs, verifiedContract.evmVersion, verifiedContract.sourceCode, verifiedContract.bytecode, verifiedContract.constructorArguments, verifiedContract.libraries, verifiedContract.abi)
+        mysql.updateAddresses(importAddress, 1, 1, 1, 0, null, null, verifiedContract.contractName, verifiedContract.compilerVersion, verifiedContract.optimization, verifiedContract.runs, verifiedContract.evmVersion, verifiedContract.sourceCode, verifiedContract.bytecode, verifiedContract.constructorArguments, verifiedContract.libraries, verifiedContract.abi, verifiedContract.sourceCodeJson, verifiedContract.sourcemap, verifiedContract.swarm, verifiedContract.license)
       } else {
       // mark contract as not verified on Etherscan
         console.log(importAddress + ' not verified on Etherscan...')
@@ -304,7 +305,7 @@ async function checkSourceCodeImport () {
     let verifiedContract = await parser.parsePageNoProxy(etherscanCodeURL)
     if (verifiedContract) {
       console.log(colors.cyan(address + ' source code fetched and imported...'))
-      await mysql.updateAddresses(address, blockscout, verified, checked, failed, null, null, verifiedContract.contractName, verifiedContract.compilerVersion, verifiedContract.optimization, verifiedContract.runs, verifiedContract.evmVersion, verifiedContract.sourceCode, verifiedContract.bytecode, verifiedContract.constructorArguments, verifiedContract.libraries, verifiedContract.abi)
+      await mysql.updateAddresses(address, blockscout, verified, checked, failed, null, null, verifiedContract.contractName, verifiedContract.compilerVersion, verifiedContract.optimization, verifiedContract.runs, verifiedContract.evmVersion, verifiedContract.sourceCode, verifiedContract.bytecode, verifiedContract.constructorArguments, verifiedContract.libraries, verifiedContract.abi, verifiedContract.sourceCodeJson, verifiedContract.sourcemap, verifiedContract.swarm, verifiedContract.license)
     }
     await sleep(sleepTimeOne)
   }
