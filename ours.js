@@ -8,14 +8,14 @@ const {
   sleep,
   checkSourceCodeImport,
   checkNewBlocks,
-  checkVerifiedContractsPage
+  checkVerifiedContractsPage,
+  addBlockInfo
 } = common
 
 const {
   verfiedContractPageStart,
   verfiedContractPageEnd,
-  sleepTimeVerifiedPage,
-  addBlockInfo
+  sleepTimeVerifiedPage
 } = constants
 
 startApp()
