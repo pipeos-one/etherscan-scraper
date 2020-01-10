@@ -37,12 +37,54 @@ module.exports = {
       }
     })
     return results
+  },
+  parseTxPageNoProxy: async (url) => {
+    let results = await new Promise(async (resolve, reject) => {
+      try {
+        let data = await axios.fetchPageNoProxy(url)
+        if (data) {
+          // we know the contract is verified, let's get the source code, name, solidity version, optimization, constructors and libraries
+          let object = parseTxPage(data)
+          resolve(object)
+        } else {
+          resolve(false)
+        }
+      } catch (error) {
+        reject(error)
+      }
+    })
+    return results
   }
+}
+
+function parseTxPage (data) {
+  let $ = cheerio.load(data)
+  let txInfo = {}
+  $('#ContentPlaceHolder1_maintable > div').each(function (i, element) {
+    let infoName = $(this).children().first().text()
+    if (infoName.includes('Block:')) {
+      let text = $(this).html()
+      txInfo.block = extractBlock(text)
+    }
+  })
+  return txInfo
+}
+
+function extractBlock (data) {
+  if (data) {
+    var re = new RegExp('href="/block/(.*?)">', 'i')
+    let block = data.match(re)[1]
+    if (block) {
+      return block
+    }
+  }
+  return false
 }
 
 function contractVerified (data) {
   let $ = cheerio.load(data)
   let verified = $('#ContentPlaceHolder1_contractCodeDiv > div.row.py-1 > div > h3 > strong').text()
+  // console.log('-- verified', verified, verified.indexOf('Contract Source Code Verified'))
   if (verified.indexOf('Contract Source Code Verified') > -1) {
     return true
   } else {
@@ -53,9 +95,11 @@ function contractVerified (data) {
 function parseVerifiedContract (data) {
   let contractObject = {}
   let $ = cheerio.load(data)
+  contractObject.txhash = $('#ContentPlaceHolder1_trContract > div > div:nth-child(2) > span > a').text()
   contractObject.contractName = $('#ContentPlaceHolder1_contractCodeDiv > div.row.mx-gutters-lg-1.mb-5 > div:nth-child(1) > div.row.align-items-center > div.col-7.col-lg-8 > span').text()
   contractObject.compilerVersion = $('#ContentPlaceHolder1_contractCodeDiv > div.row.mx-gutters-lg-1.mb-5 > div:nth-child(1) > div:nth-child(3) > div.col-7.col-lg-8 > span').text()
   if (contractObject.compilerVersion.indexOf('vyper') > -1) {
+    console.log('-- vyper --')
     return false
   }
   let opt = parseOptimization($('#ContentPlaceHolder1_contractCodeDiv > div.row.mx-gutters-lg-1.mb-5 > div:nth-child(2) > div:nth-child(1) > div.col-7.col-lg-8 > span').text())

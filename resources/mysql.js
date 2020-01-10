@@ -22,6 +22,17 @@ let self = module.exports = {
     )
     return results
   },
+  emptyBlockAddresses: async () => {
+    let results = await new Promise((resolve, reject) => {
+      connection.query('SELECT address, txhash FROM addresses WHERE txhash IS NOT NULL AND block IS NULL LIMIT 1000', (err, res) => {
+        if (err) {
+          console.log(err)
+        }
+        resolve(res)
+      })
+    })
+    return results
+  },
   sourceCodeAddresses: async () => {
     let results = await new Promise((resolve, reject) => {
       connection.query('SELECT * FROM addresses WHERE (blockscout = ? AND contractName IS NULL) OR (failed = ? AND contractName IS NULL) LIMIT 1', [1, 1], (err, res) => {
@@ -35,7 +46,7 @@ let self = module.exports = {
   },
   sourceCodeAddresses2: async () => {
     let results = await new Promise((resolve, reject) => {
-      connection.query('SELECT * FROM addresses WHERE (checked = ? AND contractName IS NULL) OR (failed = ? AND contractName IS NULL) LIMIT 1', [0, 1], (err, res) => {
+      connection.query('SELECT * FROM addresses WHERE (checked = ? AND failed = ? AND abi IS NULL) OR (failed = ? AND abi IS NULL) LIMIT 1', [1, 0, 1], (err, res) => {
         if (err) {
           console.log(err)
         }
@@ -84,13 +95,25 @@ let self = module.exports = {
     )
     return results
   },
-  checkVerifiedAddresses: async () => {
+  checkVerifiedAddresses: async (verified = 0) => {
     let results = await new Promise((resolve, reject) =>
-      connection.query('SELECT * FROM addresses WHERE verified = ? AND checked = ? AND blockscout = ? AND id > ? ORDER BY id DESC LIMIT 1000', [0, 0, 0, 0], (err, res) => {
+      connection.query('SELECT * FROM addresses WHERE verified = ? AND checked = ? AND blockscout = ? AND id > ? ORDER BY id DESC LIMIT 1000', [verified, 0, 0, 0], (err, res) => {
         if (err) {
           reject(err)
         } else {
           resolve(res)
+        }
+      })
+    )
+    return results
+  },
+  updateBlockInfo: async (address, block) => {
+    let results = await new Promise((resolve, reject) =>
+      connection.query('UPDATE addresses SET block = ? WHERE address = ?', [block, address], (err) => {
+        if (err) {
+          reject(err)
+        } else {
+          resolve(true)
         }
       })
     )
