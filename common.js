@@ -226,6 +226,8 @@ async function importSourceCode (repeat = false, verified = 0) {
       if (verifiedContract) {
         if (verifiedContract.constructorArguments) {
           console.log(colors.yellow(importAddress))
+        } else {
+          console.log(colors.cyan(importAddress + ' source code fetched and imported...'))
         }
 
         mysql.updateAddresses(importAddress, 1, 1, 1, 0, verifiedContract.txhash, null, verifiedContract.contractName, verifiedContract.compilerVersion, verifiedContract.optimization, verifiedContract.runs, verifiedContract.evmVersion, verifiedContract.sourceCode, verifiedContract.bytecode, verifiedContract.constructorArguments, verifiedContract.libraries, verifiedContract.abi, verifiedContract.sourceCodeJson, verifiedContract.sourcemap, verifiedContract.swarm, verifiedContract.license)
