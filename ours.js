@@ -37,7 +37,8 @@ async function startApp () {
   // importVerifiedSourceCode(true)
 
   // looks through checked = 1 && failed = 0 && abi NULL
-  checkSourceCodeImport()
+  // fixme
+  // checkSourceCodeImport()
 
   addBlockInfo(true)
 

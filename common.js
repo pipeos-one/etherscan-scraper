@@ -211,6 +211,7 @@ function getBlockPages (data) {
 }
 
 async function importSourceCode (repeat = false, verified = 0) {
+  console.log('-----------------importSourceCode---------', repeat, verified)
   // let addresses = await mysql.checkAddresses()
   let addresses = await mysql.checkVerifiedAddresses(verified)
   if (addresses.length > 0) {
@@ -227,7 +228,7 @@ async function importSourceCode (repeat = false, verified = 0) {
         if (verifiedContract.constructorArguments) {
           console.log(colors.yellow(importAddress))
         } else {
-          console.log(colors.cyan(importAddress + ' source code fetched and imported...'))
+          console.log(colors.green(importAddress + ' source code fetched and imported...'))
         }
 
         mysql.updateAddresses(importAddress, 1, 1, 1, 0, verifiedContract.txhash, null, verifiedContract.contractName, verifiedContract.compilerVersion, verifiedContract.optimization, verifiedContract.runs, verifiedContract.evmVersion, verifiedContract.sourceCode, verifiedContract.bytecode, verifiedContract.constructorArguments, verifiedContract.libraries, verifiedContract.abi, verifiedContract.sourceCodeJson, verifiedContract.sourcemap, verifiedContract.swarm, verifiedContract.license)
@@ -244,27 +245,29 @@ async function importSourceCode (repeat = false, verified = 0) {
   if (repeat === true) {
     await sleep(sleepTimeThousand)
     console.log(colors.blue('Rechecking address list backlog...'))
-    importSourceCode(true)
+    importSourceCode(true, verified)
   }
 }
 
 async function checkSourceCodeImport () {
   let addressArray = await mysql.sourceCodeAddresses2()
-  if (addressArray) {
-    let address = addressArray[0].address
-    let blockscout = addressArray[0].blockscout
-    let verified = addressArray[0].verified
-    let checked = addressArray[0].checked
-    let failed = addressArray[0].failed
-    let etherscanCodeURL = `${etherscanBase}/address/` + address + '#code'
-    // let verifiedContract = await parser.parsePage(etherscanCodeURL)
-    let verifiedContract = await parser.parsePageNoProxy(etherscanCodeURL)
-    if (verifiedContract) {
-      console.log(colors.cyan(address + ' source code fetched and imported...'))
-      await mysql.updateAddresses(address, blockscout, verified, checked, failed, verifiedContract.txhash, null, verifiedContract.contractName, verifiedContract.compilerVersion, verifiedContract.optimization, verifiedContract.runs, verifiedContract.evmVersion, verifiedContract.sourceCode, verifiedContract.bytecode, verifiedContract.constructorArguments, verifiedContract.libraries, verifiedContract.abi, verifiedContract.sourceCodeJson, verifiedContract.sourcemap, verifiedContract.swarm, verifiedContract.license)
+  if (addressArray.length > 0) {
+    for (let i = 0; i < addressArray.length; i++) {
+      let address = addressArray[i].address
+      let blockscout = addressArray[i].blockscout
+      let verified = addressArray[i].verified
+      let checked = addressArray[i].checked
+      let failed = addressArray[i].failed
+      let etherscanCodeURL = `${etherscanBase}/address/` + address + '#code'
+      // let verifiedContract = await parser.parsePage(etherscanCodeURL)
+      let verifiedContract = await parser.parsePageNoProxy(etherscanCodeURL)
+      if (verifiedContract) {
+        console.log(colors.cyan(address + ' source code fetched and imported...'))
+        await mysql.updateAddresses(address, blockscout, verified, checked, failed, verifiedContract.txhash, null, verifiedContract.contractName, verifiedContract.compilerVersion, verifiedContract.optimization, verifiedContract.runs, verifiedContract.evmVersion, verifiedContract.sourceCode, verifiedContract.bytecode, verifiedContract.constructorArguments, verifiedContract.libraries, verifiedContract.abi, verifiedContract.sourceCodeJson, verifiedContract.sourcemap, verifiedContract.swarm, verifiedContract.license)
+      }
     }
-    await sleep(sleepTimeOne)
   }
+  await sleep(sleepTimeOne)
   checkSourceCodeImport()
 }
 

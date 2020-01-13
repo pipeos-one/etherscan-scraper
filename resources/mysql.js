@@ -46,7 +46,7 @@ let self = module.exports = {
   },
   sourceCodeAddresses2: async () => {
     let results = await new Promise((resolve, reject) => {
-      connection.query('SELECT * FROM addresses WHERE (checked = ? AND failed = ? AND abi IS NULL) OR (failed = ? AND abi IS NULL) LIMIT 1', [1, 0, 1], (err, res) => {
+      connection.query('SELECT * FROM addresses WHERE (checked = ? AND failed = ? AND abi IS NULL) OR (failed = ? AND abi IS NULL) LIMIT 1000', [1, 0, 1], (err, res) => {
         if (err) {
           console.log(err)
         }
