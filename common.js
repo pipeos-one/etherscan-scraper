@@ -120,7 +120,8 @@ function parseVerifiedContractPage (data) {
     if (parsedData !== null) {
       if (parsedData) {
         let address = parsedData.trim()
-        addressArray.push(address)
+        addressArray.push({address, txhash: null, block: null});
+        // addressArray.push(address)
       }
     }
   })
