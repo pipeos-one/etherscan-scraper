@@ -1,11 +1,11 @@
 -- phpMyAdmin SQL Dump
--- version 4.9.1
+-- version 4.9.2
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Generation Time: Jan 10, 2020 at 11:04 PM
--- Server version: 10.4.8-MariaDB
--- PHP Version: 7.3.10
+-- Generation Time: Jan 19, 2020 at 07:27 PM
+-- Server version: 10.4.11-MariaDB
+-- PHP Version: 7.4.1
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 SET AUTOCOMMIT = 0;
@@ -19,7 +19,7 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- Database: `os_etherscan_mainnet`
+-- Database: `etherscan_contracts_mainnet_v2`
 --
 
 -- --------------------------------------------------------
@@ -51,7 +51,8 @@ CREATE TABLE `addresses` (
   `sourcemap` longtext DEFAULT NULL,
   `swarm` varchar(255) DEFAULT NULL,
   `license` varchar(255) DEFAULT NULL,
-  `sourceCodeJson` longtext DEFAULT NULL
+  `sourceCodeJson` longtext DEFAULT NULL,
+  `donotcheck` smallint(1) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
