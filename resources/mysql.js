@@ -1,4 +1,10 @@
-var connection = require('./database')
+// var connection = require('./database')
+const connectAndRestart = require('./database')
+const colors = require('colors')
+
+let connection
+
+connection = connectAndRestart()
 
 let self = module.exports = {
   insertAddress: async ({address, txhash, block}, isVerified) => {
@@ -135,15 +141,30 @@ let self = module.exports = {
     }
     args.push(address)
     let results = await new Promise((resolve, reject) =>
-      connection.query(upd + ' WHERE address = ?', args, (err) => {
+      connection.query(upd + ' WHERE address = ?', args, async (err) => {
         if (err) {
-          reject(err)
+          console.log(colors.red(address + ' - updateAddresses failed'))
+          // reject(err)
+          connection = connectAndRestart(false)
+          await self.updateAddressesDoNotCheck(address)
+          resolve(true)
         } else {
           resolve(true)
         }
       })
     )
     return results
+  },
+  updateAddressesDoNotCheck: async (address) => {
+    return new Promise((resolve, reject) => {
+      connection.query('UPDATE addresses SET checked = ?, failed = ?, donotcheck = ? WHERE address = ?', [1, 1, 1, address], (err) => {
+        if (err) {
+          reject(err)
+        } else {
+          resolve(true)
+        }
+      })
+    })
   },
   checkStartBlock: async (start) => {
     let results = await new Promise((resolve, reject) => {
